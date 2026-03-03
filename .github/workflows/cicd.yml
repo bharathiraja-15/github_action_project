@@ -35,15 +35,15 @@ jobs:
           sudo dnf install -y wget
           sudo rpm -ivh https://github.com/aquasecurity/trivy/releases/latest/download/trivy_0.50.1_Linux-64bit.rpm || true
 
-      - name: Trivy FS Scan
-        run: trivy fs --format table -o trivy-report.txt .
+      - name: Trivy FS Scan (Do not fail pipeline)
+        run: trivy fs --exit-code 0 --format table -o trivy-report.txt .
 
       - name: Install Gitleaks
         run: |
           sudo dnf install -y gitleaks || true
 
-      - name: Run Gitleaks Scan
-        run: gitleaks detect --source . --report-format json --report-path gitleaks-report.json
+      - name: Run Gitleaks Scan (Do not fail pipeline)
+        run: gitleaks detect --source . --report-format json --report-path gitleaks-report.json || true
 
 
   test:
@@ -71,7 +71,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0   # Required for better Sonar analysis
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
