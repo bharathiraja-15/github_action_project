@@ -5,6 +5,7 @@ on:
     branches: [ "main" ]
 
 jobs:
+
   compile:
     runs-on: self-hosted
 
@@ -21,35 +22,10 @@ jobs:
       - name: Build with Maven
         run: mvn clean compile
 
-  security-check:
+
+  test:
     runs-on: self-hosted
-    
-    needs: compile   # Run only after compile success
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Trivy
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y wget gnupg
-          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | gpg --dearmor | sudo tee /usr/share/keyrings/trivy.gpg > /dev/null
-          echo "deb [signed-by=/usr/share/keyrings/trivy.gpg] https://aquasecurity.github.io/trivy-repo/deb generic main" | sudo tee /etc/apt/sources.list.d/trivy.list
-          sudo apt-get update
-          sudo apt-get install -y trivy
-
-      - name: Trivy FS Scan
-        run: trivy fs --format table -o trivy-report.txt .
-
-      - name: Install Gitleaks
-        run: |
-          sudo apt-get install -y gitleaks
-
-      - name: Run Gitleaks Scan
-        run: gitleaks detect --source . --report-format json --report-path gitleaks-report.json
-
-      test:
-        runs-on: self-hosted
+    needs: compile
 
     steps:
       - uses: actions/checkout@v4
@@ -61,5 +37,28 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Unit Test Case
-        run: mvn clean compile
+      - name: Run Unit Tests
+        run: mvn test
+
+
+  security-check:
+    runs-on: self-hosted
+    needs: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Trivy (Amazon Linux)
+        run: |
+          sudo dnf install -y wget gnupg
+          sudo rpm -ivh https://github.com/aquasecurity/trivy/releases/latest/download/trivy_0.50.1_Linux-64bit.rpm || true
+
+      - name: Trivy FS Scan
+        run: trivy fs --format table -o trivy-report.txt .
+
+      - name: Install Gitleaks
+        run: |
+          sudo dnf install -y gitleaks || true
+
+      - name: Run Gitleaks Scan
+        run: gitleaks detect --source . --report-format json --report-path gitleaks-report.json
